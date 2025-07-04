@@ -58,24 +58,27 @@ class DataSaver:
         
         try:
             t = DataSaver._generate_time_axis(len(data))
-            
-            with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.writer(csvfile)
-                
-                # 寫入備註
-                if save_info['comments']:
-                    writer.writerow([f"# {save_info['comments']}"])
-                    writer.writerow([])
-                
-                writer.writerow(["Time (ns)", "Real", "Imag", "Abs"])
-                
-                for i in range(len(t)):
-                    writer.writerow([
-                        f"{t[i]:.4f}",
-                        f"{np.real(data[i]):.6e}",
-                        f"{np.imag(data[i]):.6e}",
-                        f"{np.abs(data[i]):.6e}"
-                    ])
+
+            numeric_data = np.column_stack((
+                t,
+                np.real(data),
+                np.imag(data),
+                np.abs(data)
+            ))
+
+            header = ""
+            if save_info['comments']:
+                header += f"# {save_info['comments']}\n"
+            header += "Time (ns),Real,Imag,Abs"
+
+            np.savetxt(
+                file_path,
+                numeric_data,
+                delimiter=",",
+                fmt=["%.4f", "%.6e", "%.6e", "%.6e"],
+                header=header,
+                comments=""
+            )
                     
             if parent:
                 QMessageBox.information(parent, "成功", f"時域數據已保存至: {file_path}")
@@ -103,27 +106,35 @@ class DataSaver:
         try:
             freq = freq_domain_data['freq'] / 1e9  # GHz
             data = freq_domain_data['data']
-            
-            with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.writer(csvfile)
-                
-                if save_info['comments']:
-                    writer.writerow([f"# {save_info['comments']}"])
-                    writer.writerow([])
-                
-                # 添加完整複數信息
-                writer.writerow(["Frequency (GHz)", "Real", "Imag", "Abs", "Magnitude (dB)", "Phase (rad)"])
-                
-                for i in range(len(freq)):
-                    magnitude = 20 * np.log10(np.abs(data[i])) if np.abs(data[i]) > 0 else -np.inf
-                    writer.writerow([
-                        f"{freq[i]:.4f}",
-                        f"{np.real(data[i]):.6e}",
-                        f"{np.imag(data[i]):.6e}",
-                        f"{np.abs(data[i]):.6e}",
-                        f"{magnitude:.4f}",
-                        f"{np.angle(data[i]):.6f}"
-                    ])
+
+            magnitude = np.where(
+                np.abs(data) > 0,
+                20 * np.log10(np.abs(data)),
+                -np.inf
+            )
+
+            numeric_data = np.column_stack((
+                freq,
+                np.real(data),
+                np.imag(data),
+                np.abs(data),
+                magnitude,
+                np.angle(data)
+            ))
+
+            header = ""
+            if save_info['comments']:
+                header += f"# {save_info['comments']}\n"
+            header += "Frequency (GHz),Real,Imag,Abs,Magnitude (dB),Phase (rad)"
+
+            np.savetxt(
+                file_path,
+                numeric_data,
+                delimiter=",",
+                fmt=["%.4f", "%.6e", "%.6e", "%.6e", "%.4f", "%.6f"],
+                header=header,
+                comments=""
+            )
                     
             if parent:
                 QMessageBox.information(parent, "成功", f"頻域數據已保存至: {file_path}")
